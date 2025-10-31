@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import sql from '../../../lib/database'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -79,60 +81,6 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error creating user:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-}
-
-export async function PUT(request) {
-  try {
-    const body = await request.json()
-    const { user_id, campus, is_admin } = body
-
-    if (!user_id) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
-    }
-
-    console.log('Updating user:', { user_id, campus, is_admin })
-
-    const updateFields = []
-    const updateValues = []
-
-    if (campus !== undefined) {
-      updateFields.push(`campus = $${updateFields.length + 1}`)
-      updateValues.push(campus)
-    }
-
-    if (is_admin !== undefined) {
-      updateFields.push(`is_admin = $${updateFields.length + 1}`)
-      updateValues.push(is_admin)
-    }
-
-    if (updateFields.length === 0) {
-      return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
-    }
-
-    const query = `
-      UPDATE users 
-      SET ${updateFields.join(', ')}
-      WHERE user_id = $${updateFields.length + 1}
-      RETURNING *
-    `
-    updateValues.push(parseInt(user_id))
-
-    const [user] = await sql.unsafe(query, updateValues)
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      user, 
-      message: 'User updated successfully' 
-    })
-
-  } catch (error) {
-    console.error('Error updating user:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
