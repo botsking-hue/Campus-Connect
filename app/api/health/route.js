@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import sql from '../../../lib/database'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     // Test database connection
