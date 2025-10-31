@@ -48,7 +48,7 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Error fetching users:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json([], { status: 200 })
   }
 }
 
@@ -86,20 +86,40 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const body = await request.json()
-    const { user_id, campus } = body
+    const { user_id, campus, is_admin } = body
 
     if (!user_id) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    console.log('Updating user campus:', { user_id, campus })
+    console.log('Updating user:', { user_id, campus, is_admin })
 
-    const [user] = await sql`
+    const updateFields = []
+    const updateValues = []
+
+    if (campus !== undefined) {
+      updateFields.push(`campus = $${updateFields.length + 1}`)
+      updateValues.push(campus)
+    }
+
+    if (is_admin !== undefined) {
+      updateFields.push(`is_admin = $${updateFields.length + 1}`)
+      updateValues.push(is_admin)
+    }
+
+    if (updateFields.length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+    }
+
+    const query = `
       UPDATE users 
-      SET campus = ${campus}
-      WHERE user_id = ${user_id}
+      SET ${updateFields.join(', ')}
+      WHERE user_id = $${updateFields.length + 1}
       RETURNING *
     `
+    updateValues.push(parseInt(user_id))
+
+    const [user] = await sql.unsafe(query, updateValues)
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -108,7 +128,7 @@ export async function PUT(request) {
     return NextResponse.json({ 
       success: true, 
       user, 
-      message: 'User campus updated successfully' 
+      message: 'User updated successfully' 
     })
 
   } catch (error) {
