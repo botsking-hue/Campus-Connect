@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import sql from '../../../lib/database'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -106,63 +108,5 @@ export async function POST(request) {
       success: false, 
       error: error.message 
     }, { status: 500 })
-  }
-}
-
-export async function PUT(request) {
-  try {
-    const body = await request.json()
-    const { post_id, status, admin_notes } = body
-
-    console.log('Updating post:', { post_id, status })
-
-    const [post] = await sql`
-      UPDATE posts 
-      SET status = ${status}, 
-          approved_at = ${status === 'approved' ? sql`NOW()` : sql`NULL`},
-          admin_notes = ${admin_notes}
-      WHERE id = ${post_id}
-      RETURNING *
-    `
-
-    if (!post) {
-      return NextResponse.json({ error: 'Post not found' }, { status: 404 })
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      post, 
-      message: 'Post updated successfully' 
-    })
-
-  } catch (error) {
-    console.error('Error updating post:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-}
-
-export async function DELETE(request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const post_id = searchParams.get('id')
-
-    if (!post_id) {
-      return NextResponse.json({ error: 'Post ID is required' }, { status: 400 })
-    }
-
-    console.log('Deleting post:', post_id)
-
-    const result = await sql`
-      DELETE FROM posts WHERE id = ${parseInt(post_id)}
-    `
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Post deleted successfully' 
-    })
-
-  } catch (error) {
-    console.error('Error deleting post:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
