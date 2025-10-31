@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import sql from '../../../lib/database'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -62,30 +64,6 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error creating notification:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-}
-
-export async function PUT(request) {
-  try {
-    const body = await request.json()
-    const { notification_id, read } = body
-
-    if (!notification_id) {
-      return NextResponse.json({ error: 'Notification ID is required' }, { status: 400 })
-    }
-
-    console.log('Updating notification:', { notification_id, read })
-
-    // In a real app, update notification in database
-    // For now, just return success
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Notification updated successfully' 
-    })
-
-  } catch (error) {
-    console.error('Error updating notification:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
