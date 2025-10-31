@@ -25,6 +25,7 @@ export async function GET(request) {
         COUNT(*) as total_users,
         (SELECT COUNT(*) FROM posts) as total_posts,
         (SELECT COUNT(*) FROM posts WHERE status = 'pending') as pending_posts,
+        (SELECT COUNT(*) FROM posts WHERE status = 'approved') as approved_posts,
         COUNT(DISTINCT campus) as active_campuses
       FROM users
       WHERE campus IS NOT NULL
@@ -37,17 +38,40 @@ export async function GET(request) {
       GROUP BY category
     `
 
-    return NextResponse.json({ stats, categories })
+    // Get recent users
+    const recentUsers = await sql`
+      SELECT user_id, first_name, username, campus, created_at 
+      FROM users 
+      ORDER BY created_at DESC 
+      LIMIT 10
+    `
+
+    return NextResponse.json({ 
+      stats, 
+      categories: categories || [],
+      recentUsers: recentUsers || []
+    })
+
   } catch (error) {
     console.error('Error fetching admin data:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ 
+      stats: {
+        total_users: 0,
+        total_posts: 0,
+        pending_posts: 0,
+        approved_posts: 0,
+        active_campuses: 0
+      },
+      categories: [],
+      recentUsers: []
+    }, { status: 200 })
   }
 }
 
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { user_id, action, post_id } = body
+    const { user_id, action, post_id, target_user_id } = body
 
     if (!user_id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
@@ -62,6 +86,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
+    // Handle different admin actions
     if (action === 'approve') {
       await sql`
         UPDATE posts 
@@ -69,14 +94,28 @@ export async function POST(request) {
         WHERE id = ${post_id}
       `
       return NextResponse.json({ success: true, message: 'Post approved' })
-    } else if (action === 'reject') {
+    } 
+    else if (action === 'reject') {
       await sql`
         DELETE FROM posts WHERE id = ${post_id}
       `
       return NextResponse.json({ success: true, message: 'Post rejected' })
     }
+    else if (action === 'make_admin') {
+      await sql`
+        UPDATE users SET is_admin = TRUE WHERE user_id = ${target_user_id}
+      `
+      return NextResponse.json({ success: true, message: 'User promoted to admin' })
+    }
+    else if (action === 'remove_admin') {
+      await sql`
+        UPDATE users SET is_admin = FALSE WHERE user_id = ${target_user_id}
+      `
+      return NextResponse.json({ success: true, message: 'Admin privileges removed' })
+    }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+
   } catch (error) {
     console.error('Error in admin action:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
